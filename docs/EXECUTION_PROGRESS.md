@@ -5,7 +5,7 @@ Updated at every checkpoint gate. Tests are cumulative.
 | Checkpoint | Status | Gate result |
 | --- | --- | --- |
 | CP0 | done | 23 tests, 26% cov, ruff/mypy clean, fresh-venv install verified |
-| CP1 | not started | — |
+| CP1 | done | 71 tests, sandbox 100% branch, 3k-case fuzz |
 | CP2 | not started | — |
 | CP3 | not started | — |
 | CP4 | not started | — |

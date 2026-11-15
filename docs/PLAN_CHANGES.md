@@ -15,3 +15,13 @@ Every deviation from the development plans is recorded here with a reason.
   The legacy ReAct CLI imports it. It is removed when CP6 replaces the loop.
 - **The literal `dir_ai/{ui,controller,agent,middleware,tools}` directory was
   deleted.** It was empty and untracked.
+
+## CP1
+
+- **Windows drive and UNC paths are rejected on every platform.**
+  The plan asks for Windows path tests skipped off Windows. Rejecting them
+  everywhere is stricter and keeps a Linux checkout from ever treating
+  `C:\...` or `\\server\...` as a relative filename.
+- **Paths over 4096 characters or with a component over 255 bytes are
+  rejected up front.** This turns a later `OSError` into a clear sandbox error
+  and avoids leaking platform-specific failure details.

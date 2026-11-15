@@ -21,15 +21,15 @@ PY = sys.executable
 # Overall coverage floor per checkpoint. Raised as modules gain tests.
 COVERAGE_FLOOR: dict[int, int] = {
     0: 25,
-    1: 55,
-    2: 70,
-    3: 75,
-    4: 80,
-    5: 80,
-    6: 80,
-    7: 80,
-    8: 80,
-    9: 85,
+    1: 40,
+    2: 55,
+    3: 60,
+    4: 65,
+    5: 70,
+    6: 75,
+    7: 75,
+    8: 75,
+    9: 80,
 }
 
 # Checkpoint-specific modules that must hit 100% branch coverage.

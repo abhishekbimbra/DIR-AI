@@ -1,21 +1,15 @@
-"""
-Tool Layer — Sandbox path resolution and validation.
-All file operations must pass through here.
+"""Deprecated shim: use :mod:`dir_ai.sandbox` directly.
+
+Kept so the transitional CLI tools keep working until CP2 rebuilds them.
 """
 
-import os
+from __future__ import annotations
+
 from pathlib import Path
 
-# The directory where dir-ai was launched
-BASE_DIR = Path(os.getcwd()).resolve()
+from dir_ai.sandbox import SandboxPolicy, default_policy, get_base_dir, safe_path
 
+_POLICY: SandboxPolicy = default_policy()
+BASE_DIR: Path = _POLICY.root
 
-def safe_path(filename: str) -> Path:
-    """
-    Resolve a filename relative to BASE_DIR.
-    Raises ValueError if the resolved path escapes the sandbox.
-    """
-    resolved = (BASE_DIR / filename).resolve()
-    if not str(resolved).startswith(str(BASE_DIR)):
-        raise ValueError(f"Access denied: '{filename}' is outside the working directory.")
-    return resolved
+__all__ = ["BASE_DIR", "SandboxPolicy", "get_base_dir", "safe_path"]
