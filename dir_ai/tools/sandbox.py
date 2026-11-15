@@ -17,7 +17,5 @@ def safe_path(filename: str) -> Path:
     """
     resolved = (BASE_DIR / filename).resolve()
     if not str(resolved).startswith(str(BASE_DIR)):
-        raise ValueError(
-            f"Access denied: '{filename}' is outside the working directory."
-        )
+        raise ValueError(f"Access denied: '{filename}' is outside the working directory.")
     return resolved

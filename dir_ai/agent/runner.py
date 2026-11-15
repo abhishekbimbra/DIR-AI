@@ -1,21 +1,19 @@
-"""
-Agent Layer — LangChain ReAct agent powered by Gemini.
-Compatible with LangChain v0.3.x
+"""Agent layer — transitional LangChain ReAct implementation.
+
+This module is replaced by the native tool-calling loop in CP6. Until then it
+keeps the CLI usable while the typed event stream and tools are rebuilt.
 """
 
-# ── LangChain v0.3.x imports (all moved to langchain_core / langchain package)
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_classic.agents import create_react_agent
-from langchain_classic.agents import AgentExecutor
+from __future__ import annotations
+
+from langchain_classic.agents import AgentExecutor, create_react_agent
 from langchain_core.prompts import PromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-from dir_ai.tools.registry import get_tools
+from dir_ai.config import ConfigError, Settings
 from dir_ai.middleware.callbacks import DirAICallbackHandler
-from dir_ai.config import GEMINI_API_KEY, GEMINI_MODEL
+from dir_ai.tools.registry import get_tools
 
-
-
-# ── ReAct prompt template (inline — no hub.pull() needed, avoids network call)
 REACT_TEMPLATE = """Answer the following questions as best you can. You have access to the following tools:
 
 {tools}
@@ -38,43 +36,39 @@ Thought:{agent_scratchpad}"""
 
 REACT_PROMPT = PromptTemplate.from_template(REACT_TEMPLATE)
 
+_agent_executor: AgentExecutor | None = None
 
-def build_agent() -> AgentExecutor:
+
+def build_agent(settings: Settings) -> AgentExecutor:
+    if settings.provider != "gemini":
+        raise ConfigError("The transitional CLI agent supports only the gemini provider.")
+    if not settings.google_api_key:
+        raise ConfigError("GOOGLE_API_KEY is required for the gemini provider.")
+
     llm = ChatGoogleGenerativeAI(
-        model=GEMINI_MODEL,
-        google_api_key=GEMINI_API_KEY,
-        temperature=0.2,
+        model=settings.model,
+        google_api_key=settings.google_api_key,
+        temperature=settings.temperature,
+        timeout=settings.timeout,
     )
-
     tools = get_tools()
-
-    agent = create_react_agent(
-        llm=llm,
-        tools=tools,
-        prompt=REACT_PROMPT,
-    )
-
+    agent = create_react_agent(llm=llm, tools=tools, prompt=REACT_PROMPT)
     return AgentExecutor(
         agent=agent,
         tools=tools,
-        verbose=False,               # We handle output via our callback
+        verbose=False,
         handle_parsing_errors=True,
-        max_iterations=10,
+        max_iterations=settings.max_iterations,
         callbacks=[DirAICallbackHandler()],
     )
 
 
-# Build once, reuse across session
-_agent_executor = None
-
-
-def run_agent(user_input: str):
+def run_agent(user_input: str, settings: Settings) -> None:
     global _agent_executor
-
     from dir_ai.ui.renderer import print_planning
 
     if _agent_executor is None:
-        _agent_executor = build_agent()
+        _agent_executor = build_agent(settings)
 
     print_planning()
     _agent_executor.invoke({"input": user_input})

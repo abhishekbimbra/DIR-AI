@@ -4,6 +4,7 @@ Reads a file from the sandboxed working directory.
 """
 
 from langchain.tools import tool
+
 from dir_ai.tools.sandbox import safe_path
 
 

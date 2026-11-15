@@ -5,8 +5,9 @@ Always requires human approval before writing.
 """
 
 from langchain.tools import tool
-from dir_ai.tools.sandbox import safe_path
+
 from dir_ai.middleware.approval import request_approval
+from dir_ai.tools.sandbox import safe_path
 
 
 @tool
@@ -28,10 +29,7 @@ def write_file_tool(input: str) -> str:
     try:
         # Parse the structured input
         if "FILENAME:" not in input or "CONTENT:" not in input:
-            return (
-                "Invalid input format. Use:\n"
-                "FILENAME: <name>\nCONTENT:\n<content>"
-            )
+            return "Invalid input format. Use:\nFILENAME: <name>\nCONTENT:\n<content>"
 
         lines = input.strip().splitlines()
         filename = ""

@@ -1,22 +1,41 @@
 [project]
-name = "cli-ai-agent"
+name = "dir-ai"
 version = "0.1.0"
-description = "Add your description here"
+description = "DIR-AI: a local, sandboxed directory-intelligence coding agent"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "dotenv>=0.9.9",
-    "langchain>=0.2.0",
-    "langchain-community>=0.4.1",
-    "langchain-core>=0.2.0",
-    "langchain-google-genai>=1.0.0",
-    "pandas>=3.0.1",
-    "pyfiglet>=1.0",
-    "python-dotenv>=1.0.0",
-    "rich>=13.0",
+    "langchain==1.2.10",
+    "langchain-classic==1.0.1",
+    "langchain-core==1.2.16",
+    "langchain-google-genai==4.2.1",
+    "langchain-groq==1.1.2",
+    "langchain-mistralai==1.1.1",
+    "langchain-ollama==1.0.1",
+    "langchain-openai==1.1.10",
+    "langgraph==1.0.10",
+    "pathspec==1.1.1",
+    "pydantic==2.12.5",
+    "pyfiglet==1.0.4",
+    "python-dotenv==1.2.1",
+    "rich==14.3.3",
+    "websockets==16.0",
 ]
+
 [project.scripts]
 dir-ai = "dir_ai.main:main"
+dir-ai-server = "dir_ai.server.__main__:main"
+
+[project.optional-dependencies]
+test = [
+    "hypothesis==6.170.15",
+    "pytest==9.2.0",
+    "pytest-asyncio==1.5.0",
+    "pytest-cov==7.1.0",
+    "pytest-socket==0.8.1",
+    "respx==0.23.1",
+    "syrupy==7.0.1",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -24,3 +43,37 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["dir_ai"]
+
+[dependency-groups]
+dev = [
+    "hypothesis==6.170.15",
+    "mypy==2.4.1",
+    "pre-commit==4.7.0",
+    "pytest==9.2.0",
+    "pytest-asyncio==1.5.0",
+    "pytest-cov==7.1.0",
+    "pytest-socket==0.8.1",
+    "respx==0.23.1",
+    "ruff==0.17.5",
+    "syrupy==7.0.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.13"
+check_untyped_defs = true
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+exclude = ["scripts/"]

@@ -9,19 +9,19 @@ from rich.rule import Rule
 console = Console()
 
 
-def print_thought(text: str):
+def print_thought(text: str) -> None:
     console.print(f"  [bold cyan]Thought:[/bold cyan] {text}")
 
 
-def print_action(tool_name: str):
+def print_action(tool_name: str) -> None:
     console.print(f"  [bold yellow]Action:[/bold yellow]  [yellow]{tool_name}[/yellow]")
 
 
-def print_observation(text: str):
+def print_observation(text: str) -> None:
     console.print(f"  [bold blue]Observation:[/bold blue] {text}")
 
 
-def print_final_answer(text: str):
+def print_final_answer(text: str) -> None:
     console.print()
     console.print(Rule(style="green"))
     console.print(
@@ -36,11 +36,11 @@ def print_final_answer(text: str):
     console.print()
 
 
-def print_planning():
+def print_planning() -> None:
     console.print()
     console.print("  [bold magenta]Planning...[/bold magenta]")
     console.print()
 
 
-def print_error(text: str):
+def print_error(text: str) -> None:
     console.print(f"  [bold red]Error:[/bold red] {text}")
