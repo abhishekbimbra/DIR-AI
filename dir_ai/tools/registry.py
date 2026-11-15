@@ -1,23 +1,43 @@
-"""Tool registry: builds LangChain tools bound to a sandbox policy."""
+"""Tool registry: LangChain tools bound to the approval-aware executor.
+
+The synchronous LangChain tools are a transitional adapter for the legacy CLI.
+Every call goes through :class:`dir_ai.execution.ToolExecutor`, so approval
+cannot be bypassed.
+"""
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Coroutine
+
 from langchain_core.tools import BaseTool, tool
 
+from dir_ai.results import ToolResult
 from dir_ai.sandbox import SandboxPolicy, default_policy
-from dir_ai.tools.edit_file import edit_file
-from dir_ai.tools.glob import glob_paths
-from dir_ai.tools.grep import grep
-from dir_ai.tools.list_directory import list_directory
-from dir_ai.tools.read_file import read_file
-from dir_ai.tools.write_file import write_file
 
 
-def build_tools(policy: SandboxPolicy) -> list[BaseTool]:
+def _run(coroutine: Coroutine[object, object, ToolResult]) -> str:
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coroutine).to_json()
+    coroutine.close()
+    raise RuntimeError("Synchronous LangChain tools cannot run inside an event loop.")
+
+
+def build_tools(policy: SandboxPolicy, executor: object | None = None) -> list[BaseTool]:
+    # Imported lazily to keep the tools package importable on its own.
+    from dir_ai.approval import CliApprovalHandler
+    from dir_ai.execution import ToolExecutor
+
+    active = executor or ToolExecutor(policy, CliApprovalHandler())
+    if not isinstance(active, ToolExecutor):
+        raise TypeError("executor must be a ToolExecutor")
+
     @tool
     def list_directory_tool(path: str = ".", recursive: bool = False) -> str:
         """List files in the workspace. Set recursive=True for a full tree."""
-        return list_directory(policy, path=path, recursive=recursive).to_json()
+        return _run(active.list_directory(path=path, recursive=recursive))
 
     @tool
     def read_file_tool(filename: str, offset: int = 0, limit: int = 200) -> str:
@@ -28,12 +48,12 @@ def build_tools(policy: SandboxPolicy) -> list[BaseTool]:
             offset: Zero-based line to start at.
             limit: Maximum lines to return (1-2000).
         """
-        return read_file(policy, filename, offset=offset, limit=limit).to_json()
+        return _run(active.read_file(filename, offset=offset, limit=limit))
 
     @tool
     def write_file_tool(filename: str, content: str) -> str:
         """Create or overwrite a file with exact content."""
-        return write_file(policy, filename, content).to_json()
+        return _run(active.write_file(filename, content))
 
     @tool
     def edit_file_tool(filename: str, old: str, new: str) -> str:
@@ -41,25 +61,26 @@ def build_tools(policy: SandboxPolicy) -> list[BaseTool]:
 
         Fails if the old text is missing or appears more than once.
         """
-        return edit_file(policy, filename, old, new).to_json()
+        return _run(active.edit_file(filename, old, new))
 
     @tool
     def grep_tool(
         pattern: str, path: str = ".", max_results: int = 100, case_sensitive: bool = True
     ) -> str:
         """Search file contents with a regular expression."""
-        return grep(
-            policy,
-            pattern,
-            path=path,
-            max_results=max_results,
-            case_sensitive=case_sensitive,
-        ).to_json()
+        return _run(
+            active.grep(
+                pattern,
+                path=path,
+                max_results=max_results,
+                case_sensitive=case_sensitive,
+            )
+        )
 
     @tool
     def glob_tool(pattern: str, path: str = ".", max_results: int = 200) -> str:
         """Find paths matching a glob such as '**/*.py'."""
-        return glob_paths(policy, pattern, path=path, max_results=max_results).to_json()
+        return _run(active.glob(pattern, path=path, max_results=max_results))
 
     return [
         list_directory_tool,

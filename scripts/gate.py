@@ -36,6 +36,7 @@ COVERAGE_FLOOR: dict[int, int] = {
 STRICT_MODULES: dict[int, tuple[str, ...]] = {
     1: ("dir_ai.sandbox",),
     2: ("dir_ai.sandbox",),
+    3: ("dir_ai.sandbox", "dir_ai.approval", "dir_ai.policy", "dir_ai.diff"),
 }
 
 

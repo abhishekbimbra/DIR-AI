@@ -25,3 +25,14 @@ Every deviation from the development plans is recorded here with a reason.
 - **Paths over 4096 characters or with a component over 255 bytes are
   rejected up front.** This turns a later `OSError` into a clear sandbox error
   and avoids leaking platform-specific failure details.
+
+## CP3
+
+- **The synchronous LangChain tool registry stays as a transitional adapter,
+  but every call now routes through `ToolExecutor`.** The CP6 loop calls the
+  executor directly; CP6 removes `get_tools()` from the agent path entirely.
+- **`ApprovalKind` includes `read` in addition to write/edit/command.** The
+  policy needs a kind to prompt for under `ask-all`; reads are free under
+  `auto-read` and `read-only`.
+- **CLI deny-with-note syntax is `n: reason`.** This keeps the interactive
+  prompt single-line while still carrying feedback to the agent.

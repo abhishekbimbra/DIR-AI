@@ -32,7 +32,7 @@ FORBIDDEN_METHODS = {
     "unlink",
     "mkdir",
 }
-ALLOWED_RECEIVERS = {"policy", "self"}
+ALLOWED_RECEIVERS = {"policy", "self", "active"}
 
 
 def _violations(path: Path) -> list[str]:

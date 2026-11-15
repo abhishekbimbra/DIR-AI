@@ -1,0 +1,23 @@
+# serializer version: 1
+# name: test_command_approval_rendering_is_stable
+  '''
+  Approval required: Run command: pytest -q tests/unit
+  cwd: /work/repo
+  timeout: 30.0s
+  argv: ['pytest', '-q', 'tests/unit']
+  reason: run unit tests
+  '''
+# ---
+# name: test_write_approval_rendering_is_stable
+  '''
+  Approval required: Write existing file: app.py
+  Label: overwrite existing file
+  
+  --- a/app.py
+  +++ b/app.py
+  @@ -1,2 +1,2 @@
+   def add(a, b):
+  -    return a + b
+  +    return a - b
+  '''
+# ---

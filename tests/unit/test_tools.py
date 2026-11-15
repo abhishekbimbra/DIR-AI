@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from dir_ai.approval import AutoApprove
+from dir_ai.execution import ToolExecutor
 from dir_ai.results import ErrorCode
 from dir_ai.sandbox import SandboxPolicy
 from dir_ai.tools.edit_file import edit_file
@@ -260,7 +262,7 @@ def test_glob_truncates(policy: SandboxPolicy) -> None:
 
 
 def test_registry_builds_six_typed_tools(policy: SandboxPolicy) -> None:
-    tools = build_tools(policy)
+    tools = build_tools(policy, ToolExecutor(policy, AutoApprove()))
     assert [tool.name for tool in tools] == [
         "list_directory_tool",
         "read_file_tool",
