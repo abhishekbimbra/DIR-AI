@@ -1,64 +1,25 @@
-"""
-Tool Layer — write_file tool.
-Writes content to a file in the sandboxed working directory.
-Always requires human approval before writing.
-"""
+"""write_file: typed content writes through the sandbox."""
 
-from langchain.tools import tool
+from __future__ import annotations
 
-from dir_ai.middleware.approval import request_approval
-from dir_ai.tools.sandbox import safe_path
+from dir_ai.results import ErrorCode, ToolResult
+from dir_ai.sandbox import SandboxError, SandboxPolicy
 
 
-@tool
-def write_file_tool(input: str) -> str:
-    """
-    Writes content to a file in the working directory.
-    Input format (use exactly this format):
-        FILENAME: <filename>
-        CONTENT:
-        <file content here>
-
-    Example:
-        FILENAME: report.txt
-        CONTENT:
-        This is the report content.
-
-    Always requires user approval before writing.
-    """
+def write_file(policy: SandboxPolicy, filename: str, content: str) -> ToolResult:
     try:
-        # Parse the structured input
-        if "FILENAME:" not in input or "CONTENT:" not in input:
-            return "Invalid input format. Use:\nFILENAME: <name>\nCONTENT:\n<content>"
+        path = policy.resolve(filename, operation="write")
+    except SandboxError as exc:
+        return ToolResult.failure(ErrorCode.DENIED, str(exc))
 
-        lines = input.strip().splitlines()
-        filename = ""
-        content_lines = []
-        in_content = False
+    if policy.exists(path) and policy.is_dir(path):
+        return ToolResult.failure(ErrorCode.IS_A_DIRECTORY, f"Is a directory: {filename}")
 
-        for line in lines:
-            if line.startswith("FILENAME:") and not in_content:
-                filename = line.replace("FILENAME:", "").strip()
-            elif line.startswith("CONTENT:"):
-                in_content = True
-            elif in_content:
-                content_lines.append(line)
+    try:
+        written = policy.write_text(path, content)
+    except SandboxError as exc:
+        return ToolResult.failure(ErrorCode.DENIED, str(exc))
+    except OSError as exc:
+        return ToolResult.failure(ErrorCode.IO_ERROR, f"Could not write {filename}: {exc}")
 
-        if not filename:
-            return "Could not parse filename."
-
-        content = "\n".join(content_lines)
-        path = safe_path(filename)
-
-        # Human approval gate
-        approved = request_approval(f"Write {len(content)} chars to '{filename}'")
-        if not approved:
-            return f"Write to '{filename}' was cancelled by the user."
-
-        path.write_text(content, encoding="utf-8")
-        return f"Successfully wrote {len(content)} characters to '{filename}'."
-
-    except ValueError as e:
-        return str(e)
-    except Exception as e:
-        return f"Error writing file: {e}"
+    return ToolResult.success(f"Wrote {written} bytes to {filename}")

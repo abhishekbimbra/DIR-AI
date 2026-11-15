@@ -137,6 +137,66 @@ class SandboxPolicy:
             raise PathEscapeError(f"Parent escapes the sandbox: {parent}")
         parent.mkdir(parents=True, exist_ok=True)
 
+    # -- filesystem primitives -------------------------------------------------
+    # These are the only raw I/O operations in the package. Tools must use them.
+
+    def exists(self, path: Path) -> bool:
+        return path.exists()
+
+    def is_file(self, path: Path) -> bool:
+        return path.is_file()
+
+    def is_dir(self, path: Path) -> bool:
+        return path.is_dir()
+
+    def stat_size(self, path: Path) -> int:
+        return path.stat().st_size
+
+    def read_bytes(self, path: Path, *, max_bytes: int | None = None) -> bytes:
+        limit = self.max_file_size if max_bytes is None else min(max_bytes, self.max_file_size)
+        with path.open("rb") as handle:
+            data = handle.read(limit + 1)
+        if len(data) > limit:
+            raise FileTooLargeError(f"File exceeds the {limit}-byte read limit.")
+        return data
+
+    def read_text(self, path: Path) -> str:
+        return self.read_bytes(path).decode("utf-8", errors="replace")
+
+    def write_text(self, path: Path, content: str) -> int:
+        self.ensure_parent(path)
+        data = content.encode("utf-8")
+        path.write_bytes(data)
+        return len(data)
+
+    def iter_dir(self, path: Path) -> list[Path]:
+        return sorted(path.iterdir(), key=lambda entry: entry.name.lower())
+
+    def walk(self, path: Path) -> list[Path]:
+        """Every descendant, sorted. Symlinked directories are not followed."""
+        return sorted(path.rglob("*"), key=lambda entry: entry.as_posix().lower())
+
+    def glob_paths(self, base: Path, pattern: str) -> list[Path]:
+        results: list[Path] = []
+        for match in sorted(base.glob(pattern), key=lambda entry: entry.as_posix().lower()):
+            try:
+                resolved = match.resolve(strict=False)
+            except (OSError, RuntimeError):  # pragma: no cover - defensive
+                continue
+            if resolved.is_relative_to(self.root) and not self.is_denied(resolved):
+                results.append(resolved)
+        return results
+
+    def is_denied(self, path: Path) -> bool:
+        try:
+            resolved = Path(path).resolve(strict=False)
+            if not resolved.is_relative_to(self.root):
+                return True
+            self._check_denied(resolved)
+        except (SandboxError, ValueError, OSError, RuntimeError):
+            return True
+        return False
+
     def _check_denied(self, resolved: Path) -> None:
         parts = resolved.relative_to(self.root).parts
         for part in parts:

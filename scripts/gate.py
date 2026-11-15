@@ -33,8 +33,9 @@ COVERAGE_FLOOR: dict[int, int] = {
 }
 
 # Checkpoint-specific modules that must hit 100% branch coverage.
-STRICT_MODULES: dict[int, str] = {
-    1: "dir_ai.sandbox",
+STRICT_MODULES: dict[int, tuple[str, ...]] = {
+    1: ("dir_ai.sandbox",),
+    2: ("dir_ai.sandbox",),
 }
 
 
@@ -69,16 +70,17 @@ def main() -> int:
 
     strict = STRICT_MODULES.get(checkpoint)
     if strict:
+        coverage_args = [f"--cov={module}" for module in strict]
         run(
             [
                 PY,
                 "-m",
                 "pytest",
                 "--cov-branch",
-                f"--cov={strict}",
+                *coverage_args,
                 "--cov-report=term-missing",
                 "--cov-fail-under=100",
-                f"tests/unit/test_{strict.rsplit('.', 1)[-1]}.py",
+                "tests/unit",
             ]
         )
 

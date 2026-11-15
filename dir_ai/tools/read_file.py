@@ -1,32 +1,53 @@
-"""
-Tool Layer — read_file tool.
-Reads a file from the sandboxed working directory.
-"""
+"""read_file: paged text reads with binary and size protection."""
 
-from langchain.tools import tool
+from __future__ import annotations
 
-from dir_ai.tools.sandbox import safe_path
+from dir_ai.results import ErrorCode, ToolResult
+from dir_ai.sandbox import FileTooLargeError, SandboxError, SandboxPolicy
+
+MAX_LIMIT = 2000
+BINARY_SNIFF_BYTES = 8192
 
 
-@tool
-def read_file_tool(filename: str) -> str:
-    """
-    Reads the contents of a file in the working directory.
-    Input: filename (e.g., 'main.py' or 'notes.txt').
-    Do NOT include path separators or parent directory references.
-    """
+def read_file(
+    policy: SandboxPolicy,
+    filename: str,
+    offset: int = 0,
+    limit: int = 200,
+) -> ToolResult:
+    if offset < 0:
+        return ToolResult.failure(ErrorCode.INVALID_ARGUMENT, "offset must be zero or greater.")
+    if limit < 1 or limit > MAX_LIMIT:
+        return ToolResult.failure(
+            ErrorCode.INVALID_ARGUMENT, f"limit must be between 1 and {MAX_LIMIT}."
+        )
+
     try:
-        path = safe_path(filename)
-        if not path.exists():
-            return f"File not found: '{filename}'"
-        if not path.is_file():
-            return f"'{filename}' is not a file."
-        content = path.read_text(encoding="utf-8", errors="replace")
-        # Cap at 4000 chars to stay within context limits
-        if len(content) > 4000:
-            return content[:4000] + "\n\n[...content truncated at 4000 chars...]"
-        return content
-    except ValueError as e:
-        return str(e)
-    except Exception as e:
-        return f"Error reading file: {e}"
+        path = policy.resolve(filename, operation="read")
+    except SandboxError as exc:
+        return ToolResult.failure(ErrorCode.DENIED, str(exc))
+
+    if not policy.exists(path):
+        return ToolResult.failure(ErrorCode.NOT_FOUND, f"File not found: {filename}")
+    if not policy.is_file(path):
+        return ToolResult.failure(ErrorCode.NOT_A_FILE, f"Not a file: {filename}")
+
+    try:
+        data = policy.read_bytes(path)
+    except FileTooLargeError as exc:
+        return ToolResult.failure(ErrorCode.TOO_LARGE, str(exc))
+    except OSError as exc:
+        return ToolResult.failure(ErrorCode.IO_ERROR, f"Could not read {filename}: {exc}")
+
+    if b"\x00" in data[:BINARY_SNIFF_BYTES]:
+        return ToolResult.failure(ErrorCode.BINARY, f"Binary file: {filename}")
+
+    text = data.decode("utf-8", errors="replace")
+    lines = text.splitlines(keepends=True)
+    total = len(lines)
+    selected = lines[offset : offset + limit]
+    truncated = offset + limit < total
+
+    header = f"[{filename}: lines {offset + 1}-{offset + len(selected)} of {total}]"
+    body = "".join(selected)
+    return ToolResult.success(f"{header}\n{body}" if total else "", truncated=truncated)
